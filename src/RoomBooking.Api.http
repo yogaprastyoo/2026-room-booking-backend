@@ -1,0 +1,9 @@
+### Room Booking API - HTTP Requests
+
+@baseUrl = http://localhost:5255
+
+### Health Check (HTTP)
+GET {{baseUrl}}/api/health
+Accept: application/json
+
+###

@@ -1,51 +1,111 @@
-# Room Booking System – Backend
+# Room Booking System - Backend API
 
-Backend service for the **Room Booking System**, built using **ASP.NET Core (.NET 10)**.  
-This service provides RESTful APIs to manage room bookings, including CRUD operations, validation, and business logic, following **industry-standard Git workflow and best practices**.
+ASP.NET Core Web API for managing campus room reservations.
 
----
+## Prerequisites
 
-## 📌 Project Overview
+- .NET 10 SDK
+- PostgreSQL database
 
-The Room Booking System is designed to solve the problem of manual and unstructured room booking management in campus environments.  
-This backend application handles all server-side responsibilities such as:
+## Quick Start
 
-- Managing room booking data
-- Handling booking status (pending, approved, rejected)
-- Providing structured APIs for frontend and mobile clients
-- Ensuring data validation and consistency
+### 1. Configure Environment Variables
 
-This project is developed as part of **Project-Based Learning (PBL) 2026**.
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
 
----
+Edit `.env` and update with your PostgreSQL connection details:
+```env
+DB_CONNECTION_STRING=Host=localhost;Database=roombooking;Username=postgres;Password=yourpassword;Port=5432
+```
 
-## ✨ Features
+### 2. Run the Application
 
-- RESTful API using ASP.NET Core
-- CRUD operations for room bookings
-- Booking status management
-- Input validation using DTO & DataAnnotations
-- Database migration and seeding
-- Soft delete support (where applicable)
-- Clean and maintainable project structure
-- Industry-standard Git workflow
+From repository root:
+```bash
+dotnet run --project src/RoomBooking.Api.csproj
+```
 
----
+Or from src directory:
+```bash
+cd src
+dotnet run
+```
 
-## 🛠 Tech Stack
+### 3. Verify Setup
 
-- **Framework**: ASP.NET Core (.NET 10)
-- **Language**: C#
-- **Database**: (to be defined, e.g. PostgreSQL / SQL Server)
-- **ORM**: Entity Framework Core
-- **API Style**: REST
-- **Version Control**: Git & GitHub
+Test the health endpoint:
+```bash
+curl https://localhost:5001/api/health
+```
 
----
+Expected response:
+```json
+{
+  "success": true,
+  "message": "API is running.",
+  "data": {
+    "status": "healthy",
+    "timestamp": "2026-02-14T16:40:00.000Z"
+  }
+}
+```
 
-## ⚙️ Environment Requirements
+## Environment Configuration
 
-Based on the development environment:
+The application loads environment variables from `.env` file automatically.
 
-- **.NET SDK**: 10.0.101
-- **ASP.NET Core Runtime**: 10.0.1
+**Important:** 
+- `.env` is gitignored and should NOT be committed
+- Use `.env.example` as a template
+- For production, use actual environment variables instead of .env file
+
+### Manual Environment Variable Setup (Alternative)
+
+**Windows (PowerShell):**
+```powershell
+$env:DB_CONNECTION_STRING="Host=localhost;Database=roombooking;Username=postgres;Password=yourpassword"
+```
+
+**Linux/macOS:**
+```bash
+export DB_CONNECTION_STRING="Host=localhost;Database=roombooking;Username=postgres;Password=yourpassword"
+```
+
+## Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `dotnet build` | Build the solution |
+| `dotnet run --project src/RoomBooking.Api.csproj` | Run from root |
+| `cd src && dotnet run` | Run from src directory |
+| `dotnet watch run --project src/RoomBooking.Api.csproj` | Run with hot reload |
+
+## Project Structure
+
+```
+2026-room-booking-backend/
+├── src/             # Source code
+│   ├── Controllers/ # API controllers
+│   ├── Services/    # Business logic layer
+│   ├── Domain/      # Domain entities
+│   ├── DTOs/        # Data transfer objects
+│   ├── Data/        # DbContext and database configuration
+│   ├── Mappings/    # Entity mappings
+│   └── Middleware/  # Custom middleware
+├── docs/            # Documentation
+├── .env.example     # Environment template
+├── .env             # Local environment (gitignored)
+├── RoomBooking.sln  # Solution file
+└── README.md        # This file
+```
+
+## Development Notes
+
+- All API responses follow a standardized envelope format
+- JSON fields use snake_case naming convention
+- All timestamps are stored as PostgreSQL `timestamptz` (UTC)
+- Global exception handling is configured
+- No business logic in controllers
