@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RoomBooking.Api.Data;
 using RoomBooking.Api.Middleware;
+using RoomBooking.Api.Services;
+using RoomBooking.Api.Services.Interfaces;
 
 // Load environment variables from .env file (development convenience)
 // Look for .env in repository root (parent directory of src/)
@@ -37,6 +39,9 @@ if (string.IsNullOrEmpty(connectionString))
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString)
            .UseSnakeCaseNamingConvention());
+
+// Register services
+builder.Services.AddScoped<IBuildingService, BuildingService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
