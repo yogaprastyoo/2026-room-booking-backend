@@ -3,6 +3,7 @@ using RoomBooking.Api.Data;
 using RoomBooking.Api.Middleware;
 using RoomBooking.Api.Services;
 using RoomBooking.Api.Services.Interfaces;
+using Scalar.AspNetCore;
 
 // Load environment variables from .env file (development convenience)
 // Look for .env in repository root (parent directory of src/)
@@ -43,8 +44,20 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register services
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Configure OpenAPI with metadata
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new()
+        {
+            Title = "Room Booking System API",
+            Version = "v1",
+            Description = "Backend API for Room Booking System (PBL 2026)"
+        };
+        return Task.CompletedTask;
+    });
+});
 
 var app = builder.Build();
 
@@ -53,9 +66,11 @@ var app = builder.Build();
 // Global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
+// Enable OpenAPI and Scalar UI only in Development
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi("/openapi/v1.json");
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
