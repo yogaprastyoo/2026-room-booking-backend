@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     // DbSets
     public DbSet<Building> Buildings { get; set; }
     public DbSet<Room> Rooms { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
