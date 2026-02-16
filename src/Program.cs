@@ -43,6 +43,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Register services
 builder.Services.AddScoped<IBuildingService, BuildingService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
 
 // Configure OpenAPI with metadata
 builder.Services.AddOpenApi(options =>
@@ -51,10 +52,27 @@ builder.Services.AddOpenApi(options =>
     {
         document.Info = new()
         {
-            Title = "Room Booking System API",
+            Title = "Room Booking API",
             Version = "v1",
-            Description = "Backend API for Room Booking System (PBL 2026)"
+            Description = "API for managing room bookings, buildings, and rooms"
         };
+        return Task.CompletedTask;
+    });
+
+    // Apply snake_case naming to OpenAPI schema
+    options.AddSchemaTransformer((schema, context, cancellationToken) =>
+    {
+        if (schema.Properties != null)
+        {
+            var properties = schema.Properties.ToList();
+            schema.Properties.Clear();
+            
+            foreach (var property in properties)
+            {
+                var snakeCaseName = ToSnakeCase(property.Key);
+                schema.Properties[snakeCaseName] = property.Value;
+            }
+        }
         return Task.CompletedTask;
     });
 });
@@ -75,8 +93,33 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+// Helper function to convert PascalCase to snake_case
+static string ToSnakeCase(string input)
+{
+    if (string.IsNullOrEmpty(input)) return input;
+    
+    var result = new System.Text.StringBuilder();
+    result.Append(char.ToLowerInvariant(input[0]));
+    
+    for (int i = 1; i < input.Length; i++)
+    {
+        if (char.IsUpper(input[i]))
+        {
+            result.Append('_');
+            result.Append(char.ToLowerInvariant(input[i]));
+        }
+        else
+        {
+            result.Append(input[i]);
+        }
+    }
+    
+    return result.ToString();
+}
