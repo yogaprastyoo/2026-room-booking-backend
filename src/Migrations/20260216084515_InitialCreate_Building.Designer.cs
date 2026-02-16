@@ -12,7 +12,7 @@ using RoomBooking.Api.Data;
 namespace RoomBooking.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260215154742_InitialCreate_Building")]
+    [Migration("20260216084515_InitialCreate_Building")]
     partial class InitialCreate_Building
     {
         /// <inheritdoc />
@@ -63,6 +63,64 @@ namespace RoomBooking.Api.Migrations
                         .HasDatabaseName("ux_buildings_name");
 
                     b.ToTable("buildings", (string)null);
+                });
+
+            modelBuilder.Entity("RoomBooking.Api.Domain.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BuildingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("building_id");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rooms");
+
+                    b.HasIndex("BuildingId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_rooms_building_id_name");
+
+                    b.ToTable("rooms", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_rooms_capacity_positive", "capacity > 0");
+                        });
+                });
+
+            modelBuilder.Entity("RoomBooking.Api.Domain.Room", b =>
+                {
+                    b.HasOne("RoomBooking.Api.Domain.Building", "Building")
+                        .WithMany("Rooms")
+                        .HasForeignKey("BuildingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rooms_building");
+
+                    b.Navigation("Building");
+                });
+
+            modelBuilder.Entity("RoomBooking.Api.Domain.Building", b =>
+                {
+                    b.Navigation("Rooms");
                 });
 #pragma warning restore 612, 618
         }
