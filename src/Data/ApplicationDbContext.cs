@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RoomBooking.Api.Domain;
 
 namespace RoomBooking.Api.Data;
 
@@ -9,9 +10,15 @@ public class ApplicationDbContext : DbContext
     {
     }
 
+    // DbSets
+    public DbSet<Building> Buildings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Apply Fluent API configurations from assembly
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // Configure PostgreSQL to use timestamptz for all DateTime properties
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
@@ -24,9 +31,6 @@ public class ApplicationDbContext : DbContext
                 }
             }
         }
-
-        // Fluent API configurations will be added here
-        // modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 
     public override int SaveChanges()
