@@ -7,7 +7,7 @@ using RoomBooking.Api.Services.Interfaces;
 namespace RoomBooking.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/rooms")]
+[Route("api/rooms")]
 public class RoomController : ControllerBase
 {
     private readonly IRoomService _roomService;

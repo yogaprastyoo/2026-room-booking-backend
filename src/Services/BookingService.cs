@@ -83,32 +83,130 @@ public class BookingService : IBookingService
         return MapToResponse(booking);
     }
 
-    public async Task<PagedResult<BookingResponse>> GetAllAsync(int page, int pageSize)
+    public async Task<PagedResult<BookingResponse>> GetAllAsync(BookingFilterRequest filter)
     {
-        // Validate and normalize pagination parameters
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 10;
-        if (pageSize > 100) pageSize = 100;
+        ArgumentNullException.ThrowIfNull(filter);
 
-        var query = _context.Bookings.AsNoTracking();
+        // Validate pagination (PRD max is 50, not 100)
+        if (filter.Page < 1) filter.Page = 1;
+        if (filter.PageSize < 1) filter.PageSize = 10;
+        if (filter.PageSize > 50) filter.PageSize = 50;
 
+        // Validate sorting
+        var validSortFields = new[] { "created_at", "booking_start", "booking_end", "status" };
+        var sortBy = filter.SortBy?.ToLower() ?? "created_at";
+        if (!validSortFields.Contains(sortBy))
+        {
+            throw new ArgumentException($"Invalid sort field. Allowed: {string.Join(", ", validSortFields)}");
+        }
+
+        var sortOrder = filter.SortOrder?.ToLower() ?? "desc";
+        if (sortOrder != "asc" && sortOrder != "desc")
+        {
+            throw new ArgumentException("Invalid sort order. Allowed: asc, desc");
+        }
+
+        // Validate status enum
+        if (!string.IsNullOrWhiteSpace(filter.Status))
+        {
+            if (!Enum.TryParse<BookingStatus>(filter.Status, true, out _))
+            {
+                throw new ArgumentException("Invalid status value. Allowed: Pending, Approved, Rejected");
+            }
+        }
+
+        // Validate time range
+        if (filter.StartDate.HasValue && filter.EndDate.HasValue && filter.StartDate > filter.EndDate)
+        {
+            throw new ArgumentException("start_date cannot be greater than end_date");
+        }
+
+        // Build query with filters (order per PRD line 156-165)
+        var query = _context.Bookings
+            .Include(b => b.Room)
+                .ThenInclude(r => r.Building)
+            .AsNoTracking();
+
+        // 1. Soft delete already handled by global query filter
+
+        // 2. Building filter (via join)
+        if (filter.BuildingId.HasValue)
+        {
+            query = query.Where(b => b.Room.BuildingId == filter.BuildingId.Value);
+        }
+
+        // 3. Room filter
+        if (filter.RoomId.HasValue)
+        {
+            query = query.Where(b => b.RoomId == filter.RoomId.Value);
+        }
+
+        // 4. Status filter
+        if (!string.IsNullOrWhiteSpace(filter.Status))
+        {
+            var statusEnum = Enum.Parse<BookingStatus>(filter.Status, true);
+            query = query.Where(b => b.Status == statusEnum);
+        }
+
+        // 5. Borrower search (case-insensitive partial match)
+        if (!string.IsNullOrWhiteSpace(filter.BorrowerName))
+        {
+            var searchTerm = filter.BorrowerName.Trim();
+            query = query.Where(b => EF.Functions.ILike(b.BorrowerName, $"%{searchTerm}%"));
+        }
+
+        // 6. Time range filter (overlap logic per PRD)
+        if (filter.StartDate.HasValue && filter.EndDate.HasValue)
+        {
+            // Full overlap: (booking_start < filter_end) AND (booking_end > filter_start)
+            query = query.Where(b => b.BookingStart < filter.EndDate.Value && b.BookingEnd > filter.StartDate.Value);
+        }
+        else if (filter.StartDate.HasValue)
+        {
+            // Only start_date: booking_end > start_date
+            query = query.Where(b => b.BookingEnd > filter.StartDate.Value);
+        }
+        else if (filter.EndDate.HasValue)
+        {
+            // Only end_date: booking_start < end_date
+            query = query.Where(b => b.BookingStart < filter.EndDate.Value);
+        }
+
+        // Count before pagination
         var totalItems = await query.CountAsync();
 
+        // 7. Apply sorting
+        query = sortBy switch
+        {
+            "booking_start" => sortOrder == "asc"
+                ? query.OrderBy(b => b.BookingStart)
+                : query.OrderByDescending(b => b.BookingStart),
+            "booking_end" => sortOrder == "asc"
+                ? query.OrderBy(b => b.BookingEnd)
+                : query.OrderByDescending(b => b.BookingEnd),
+            "status" => sortOrder == "asc"
+                ? query.OrderBy(b => b.Status)
+                : query.OrderByDescending(b => b.Status),
+            _ => sortOrder == "asc"
+                ? query.OrderBy(b => b.CreatedAt)
+                : query.OrderByDescending(b => b.CreatedAt)
+        };
+
+        // 8. Apply pagination
         var items = await query
-            .OrderByDescending(b => b.CreatedAt)  // Default sorting per PRD
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
             .ToListAsync();
 
-        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+        var totalPages = (int)Math.Ceiling(totalItems / (double)filter.PageSize);
 
         return new PagedResult<BookingResponse>
         {
             Items = items.Select(MapToResponse),
             TotalItems = totalItems,
             TotalPages = totalPages,
-            CurrentPage = page,
-            PageSize = pageSize
+            CurrentPage = filter.Page,
+            PageSize = filter.PageSize
         };
     }
 
@@ -261,20 +359,22 @@ public class BookingService : IBookingService
         return normalized;
     }
 
-    // Overlap detection (application-level rule per PRD)
+    // Overlap detection (only Approved bookings block slots)
+    // Pending/Rejected bookings can overlap - admin chooses which to approve
     private async Task ValidateNoOverlap(Guid roomId, DateTime newStart, DateTime newEnd, Guid? excludeBookingId)
     {
         // Conflict rule: (new_start < existing_end) AND (new_end > existing_start)
-        // Consider all non-soft-deleted bookings (regardless of Status per PRD)
+        // Only consider Approved bookings (Pending/Rejected don't block)
         var hasOverlap = await _context.Bookings
             .Where(b => b.RoomId == roomId)
+            .Where(b => b.Status == BookingStatus.Approved)  // Only Approved blocks
             .Where(b => excludeBookingId == null || b.Id != excludeBookingId)  // Exclude current booking when updating
             .Where(b => newStart < b.BookingEnd && newEnd > b.BookingStart)  // Overlap condition
             .AnyAsync();
 
         if (hasOverlap)
         {
-            throw new InvalidOperationException("Booking conflicts with an existing reservation.");
+            throw new InvalidOperationException("Booking conflicts with an approved reservation.");
         }
     }
 
