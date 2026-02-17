@@ -107,9 +107,10 @@ A conflict exists if:
 
 Conflict evaluation must:
 
-- Consider only bookings with DeletedAt = null.
-- Conflict evaluation must consider all bookings with DeletedAt = null, regardless of Status (including Rejected bookings).
-- Exclude the current booking when updating.
+- **Only consider bookings where Status is `Approved`.**
+- Bookings with Status `Pending` or `Rejected` do **not** block the time slot.
+- Exclude bookings where DeletedAt != null (soft-deleted).
+- Exclude the current booking when updating (self-overlap check).
 
 If conflict is detected:
 
@@ -193,7 +194,7 @@ Behavior:
     - borrower_name (partial match)
     - date range (start/end overlap)
 - Apply filtering before pagination.
-- Apply pagination.
+- Apply pagination (Max page size: 50).
 - Default sorting: CreatedAt descending.
 - Include Room and Building context in response.
 
@@ -277,7 +278,7 @@ This feature is considered complete when:
 
 1. All CRUD operations function correctly.
 2. Room and Building relationships are enforced.
-3. Conflict prevention is operational.
+3. Conflict prevention is operational for `Approved` bookings.
 4. Soft deletion is enforced.
 5. Filtering and pagination work.
 6. Status cannot be modified via general update endpoint.

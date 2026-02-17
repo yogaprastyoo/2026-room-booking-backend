@@ -88,9 +88,10 @@ Status update must not bypass booking conflict logic.
 
 Important clarification:
 
-- Conflict prevention applies only during creation or time updates.
-- Status update does NOT re-evaluate time conflicts.
-- Status update does NOT modify BookingStart or BookingEnd.
+- **Conflict prevention applies only during creation or time updates.**
+- Status update does **NOT** re-evaluate time conflicts.
+- Status update does **NOT** modify BookingStart or BookingEnd.
+- Changing status to `Approved` does **NOT** trigger a retroactive conflict check against other bookings in this version (admin discretion required).
 
 This prevents unintended side effects.
 

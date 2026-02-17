@@ -10,7 +10,8 @@ All API responses MUST follow this structure.
 {
   "success": true,
   "message": "Operation completed successfully.",
-  "data": {}
+  "data": {},
+  "errors": null
 }
 ```
 
@@ -20,8 +21,9 @@ All API responses MUST follow this structure.
 {
   "success": false,
   "message": "Validation failed.",
+  "data": null,
   "errors": {
-    "field_name": ["Error message"]
+    "field_name": ["Error message 1", "Error message 2"]
   }
 }
 ```
@@ -32,6 +34,7 @@ All API responses MUST follow this structure.
 {
   "success": false,
   "message": "Resource not found.",
+  "data": null,
   "errors": null
 }
 ```
@@ -46,7 +49,7 @@ All API responses MUST follow this structure.
 
 ```
 {
-  "id": 1,
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "name": "Engineering Building",
   "code": "ENG",
   "created_at": "2026-02-01T08:00:00Z",
@@ -84,7 +87,7 @@ All API responses MUST follow this structure.
   "success": true,
   "message": "Building created successfully.",
   "data": {
-    "id": 1,
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "name": "Engineering Building",
     "code": "ENG",
     "created_at": "2026-02-01T08:00:00Z",
@@ -125,7 +128,7 @@ Constraints identical to creation.
   "data": {
     "items": [
       {
-        "id": 1,
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "name": "Engineering Building",
         "code": "ENG",
         "created_at": "2026-02-01T08:00:00Z",
@@ -133,11 +136,30 @@ Constraints identical to creation.
       }
     ],
     "pagination": {
-      "page": 1,
-      "page_size": 10,
-      "total_count": 1,
-      "total_pages": 1
+      "items": [], 
+      "total_items": 1,
+      "total_pages": 1,
+      "current_page": 1,
+      "page_size": 10
     }
+  }
+}
+```
+
+*(Note: Pagination structure flat in data or nested? Code uses `PagedResult<T>` which has `Items`, `TotalItems` etc. StandardApiResponse wraps this PagedResult object as `Data`.)*
+
+Correct structure based on code:
+
+```
+{
+  "success": true,
+  "message": "Buildings retrieved successfully.",
+  "data": {
+    "items": [ ... ],
+    "total_items": 1,
+    "total_pages": 1,
+    "current_page": 1,
+    "page_size": 10
   }
 }
 ```
@@ -152,12 +174,8 @@ Constraints identical to creation.
 
 ```
 {
-  "id": 5,
-  "building": {
-    "id": 1,
-    "name": "Engineering Building",
-    "code": "ENG"
-  },
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "building_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "name": "Room 101",
   "capacity": 50,
   "created_at": "2026-02-01T09:00:00Z",
@@ -175,7 +193,7 @@ Constraints identical to creation.
 
 ```
 {
-  "building_id": 1,
+  "building_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "name": "Room 101",
   "capacity": 50
 }
@@ -198,12 +216,8 @@ Constraints identical to creation.
   "success": true,
   "message": "Room created successfully.",
   "data": {
-    "id": 5,
-    "building": {
-      "id": 1,
-      "name": "Engineering Building",
-      "code": "ENG"
-    },
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "building_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "name": "Room 101",
     "capacity": 50,
     "created_at": "2026-02-01T09:00:00Z",
@@ -220,8 +234,8 @@ Constraints identical to creation.
 
 Supported filter:
 
-- building_id
-- name (partial match)
+- page
+- page_size
 
 ### Success Response
 
@@ -230,26 +244,11 @@ Supported filter:
   "success": true,
   "message": "Rooms retrieved successfully.",
   "data": {
-    "items": [
-      {
-        "id": 5,
-        "building": {
-          "id": 1,
-          "name": "Engineering Building",
-          "code": "ENG"
-        },
-        "name": "Room 101",
-        "capacity": 50,
-        "created_at": "2026-02-01T09:00:00Z",
-        "updated_at": "2026-02-01T09:00:00Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "page_size": 10,
-      "total_count": 1,
-      "total_pages": 1
-    }
+    "items": [ ... ],
+    "total_items": 10,
+    "total_pages": 1,
+    "current_page": 1,
+    "page_size": 10
   }
 }
 ```
@@ -264,16 +263,8 @@ Supported filter:
 
 ```
 {
-  "id": 12,
-  "room": {
-    "id": 5,
-    "name": "Room 101",
-    "building": {
-      "id": 1,
-      "name": "Engineering Building",
-      "code": "ENG"
-    }
-  },
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "room_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "borrower_name": "John Doe",
   "booking_start": "2026-02-15T09:00:00Z",
   "booking_end": "2026-02-15T11:00:00Z",
@@ -296,7 +287,7 @@ The deleted_at field is internal and must never be returned in API responses.
 
 ```
 {
-  "room_id": 5,
+  "room_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "borrower_name": "John Doe",
   "booking_start": "2026-02-15T09:00:00Z",
   "booking_end": "2026-02-15T11:00:00Z",
@@ -312,7 +303,7 @@ The deleted_at field is internal and must never be returned in API responses.
 - booking_end: required, > booking_start
 - notes: optional, max 500
 - Client must not send status, created_at, updated_at
-- Conflict detection must be enforced
+- Conflict detection must be enforced (Block if Approved overlaps)
 - Status auto-set to "Pending"
 
 ---
@@ -324,16 +315,8 @@ The deleted_at field is internal and must never be returned in API responses.
   "success": true,
   "message": "Booking created successfully.",
   "data": {
-    "id": 12,
-    "room": {
-      "id": 5,
-      "name": "Room 101",
-      "building": {
-        "id": 1,
-        "name": "Engineering Building",
-        "code": "ENG"
-      }
-    },
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "room_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "borrower_name": "John Doe",
     "booking_start": "2026-02-15T09:00:00Z",
     "booking_end": "2026-02-15T11:00:00Z",
@@ -415,12 +398,10 @@ Supported filters:
   "message": "Bookings retrieved successfully.",
   "data": {
     "items": [ /* booking objects */ ],
-    "pagination": {
-      "page": 1,
-      "page_size": 10,
-      "total_count": 37,
-      "total_pages": 4
-    }
+    "total_items": 37,
+    "total_pages": 4,
+    "current_page": 1,
+    "page_size": 10
   }
 }
 ```
@@ -436,15 +417,3 @@ Supported filters:
 5. All responses must follow the standardized envelope.
 6. Conflict detection must return HTTP 409.
 7. Foreign key integrity must be enforced.
-
----
-
-This is now:
-
-- Fully normalized
-- Strict
-- Deterministic
-- Consistent
-- MVP-aligned
-- AI-agent ready
-- Compatible with your response convention

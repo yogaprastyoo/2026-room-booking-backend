@@ -122,7 +122,7 @@ Represents a room inside a building.
 1. (BuildingId + Name) must be unique.
 2. Name maximum length: 100 characters.
 3. Capacity must be positive if provided.
-4. Room cannot be deleted if it has any active bookings (where DeletedAt is null). Return HTTP 409 Conflict. Note: Database FK constraint may also prevent deletion if soft-deleted bookings exist.
+4. Room cannot be deleted if it has any associated bookings (active or soft-deleted).
 
 ---
 
@@ -187,8 +187,9 @@ A booking conflict exists if:
 
 Conditions:
 
-- Only consider bookings where DeletedAt is null.
-- Conflict detection applies regardless of Status value (including Rejected bookings).
+- **Only bookings with Status `Approved` block the time slot.**
+- Bookings with Status `Pending` or `Rejected` do **not** block the time slot.
+- Soft-deleted bookings (`DeletedAt != null`) are excluded.
 - Conflict check must apply during:
     - Booking creation
     - Booking time update
@@ -252,7 +253,7 @@ The system must support:
 - Update building
 - Delete building (if no rooms)
 
-Pagination required for list endpoint.
+Pagination required for list endpoint (Max page size: 100).
 
 ---
 
@@ -271,7 +272,7 @@ Filtering:
 - By BuildingId
 - By room name
 
-Pagination required.
+Pagination required (Max page size: 100).
 
 ---
 
@@ -294,7 +295,7 @@ Filtering:
 - By date range
 - By borrower name
 
-Pagination required.
+Pagination required (Max page size: 50).
 
 ---
 
@@ -341,10 +342,10 @@ The system must:
 The backend is considered complete when:
 
 1. All CRUD endpoints function correctly.
-2. Conflict prevention works.
+2. Conflict prevention works (blocks overlapping `Approved` bookings).
 3. Status transition rules are enforced.
 4. Soft delete works.
-5. Pagination and filtering work.
+5. Pagination and filtering work with correct limits.
 6. No business logic exists in controllers.
 7. API response structure is consistent.
 8. Project tagged with v1.0.0.

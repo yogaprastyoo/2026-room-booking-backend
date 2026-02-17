@@ -216,9 +216,9 @@ Rules:
 
 1. Default page = 1.
 2. Default page_size = 10.
-3. Maximum page_size = 50.
+3. **Maximum page_size = 50** (Strictly enforced for Bookings).
 4. page must be ≥ 1.
-5. page_size must be between 1 and 50.
+5. page_size will be capped at 50 if a larger value is requested.
 6. Pagination must be applied after filtering and sorting.
 7. If requested page exceeds total_pages, return 200 OK with empty items array and valid pagination metadata.
 
@@ -310,7 +310,7 @@ This feature is considered complete when:
 2. Filters work correctly in combination.
 3. Time overlap logic works correctly.
 4. Soft-deleted records are excluded.
-5. Pagination metadata is accurate.
+5. Pagination metadata is accurate and respects limit of 50.
 6. Sorting works and validates input.
 7. Response format is consistent.
 8. No filtering logic exists in controller layer.

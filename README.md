@@ -22,7 +22,7 @@ A production-ready RESTful backend service designed to centralize and streamline
 
 **Solution**: This API provides:
 - ✅ Single source of truth for all reservations
-- ✅ Automatic conflict detection and prevention
+- ✅ Automatic conflict detection (Only **Approved** bookings block slots)
 - ✅ Clear booking lifecycle management (Pending → Approved/Rejected)
 - ✅ Advanced filtering, search, and pagination
 - ✅ Standardized RESTful API for easy integration
@@ -101,14 +101,19 @@ For detailed requirements and specifications:
 - **Building Management**: Full CRUD operations for campus buildings
 - **Room Management**: Manage rooms with capacity tracking and building associations
 - **Booking Management**: Create, update, and soft-delete room reservations
-- **Status Workflow**: Dedicated endpoint for booking status transitions
-- **Conflict Detection**: Automatic validation to prevent overlapping bookings
+- **Status Workflow**: Dedicated endpoint for booking status transitions (Pending → Approved/Rejected)
+- **Conflict Detection**: 
+    - Prevents overlapping bookings.
+    - **Logic**: Only `Approved` bookings block a time slot. `Pending` and `Rejected` bookings do not.
+    - Soft-deleted bookings are ignored.
 
 ### Data Features
 - **Soft Deletion**: Bookings are soft-deleted for data retention
-- **Pagination**: All list endpoints support pagination
+- **Pagination**: 
+    - Supported on all list endpoints.
+    - Limits: Max **50** for Bookings, Max **100** for Buildings/Rooms.
 - **Advanced Filtering**: Filter by building, room, status, date range, and borrower name
-- **Standardized Responses**: Consistent API response envelope across all endpoints
+- **Standardized Responses**: Consistent API response envelope (`StandardApiResponse`) across all endpoints
 
 ---
 
@@ -392,7 +397,8 @@ All API responses follow a standardized envelope:
 {
   "success": true,
   "message": "Operation successful",
-  "data": { /* response data */ }
+  "data": { /* response data */ },
+  "errors": null
 }
 ```
 
@@ -401,7 +407,8 @@ All API responses follow a standardized envelope:
 {
   "success": false,
   "message": "Error description",
-  "data": null
+  "data": null,
+  "errors": { "field": ["error"] } 
 }
 ```
 
@@ -430,29 +437,7 @@ Building (1) ──────< (N) Room (1) ──────< (N) Booking
 |--------|-----------|-------|
 | **Building** | Id, Name, Code | Name and Code must be unique |
 | **Room** | Id, BuildingId, Name, Capacity | (BuildingId + Name) must be unique |
-| **Booking** | Id, RoomId, BorrowerName, BookingStart, BookingEnd, Status, DeletedAt | Soft delete via DeletedAt |
-
-### Database Migrations
-
-**Create a new migration:**
-```bash
-dotnet ef migrations add MigrationName --project src/RoomBooking.Api.csproj
-```
-
-**Apply migrations:**
-```bash
-dotnet ef database update --project src/RoomBooking.Api.csproj
-```
-
-**Rollback migration:**
-```bash
-dotnet ef database update PreviousMigrationName --project src/RoomBooking.Api.csproj
-```
-
-**Remove last migration (if not applied):**
-```bash
-dotnet ef migrations remove --project src/RoomBooking.Api.csproj
-```
+| **Booking** | Id, RoomId, BorrowerName, BookingStart, BookingEnd, Status, DeletedAt | Soft delete via DeletedAt, Check Constraints Enforced |
 
 ---
 
@@ -462,33 +447,12 @@ dotnet ef migrations remove --project src/RoomBooking.Api.csproj
 2026-room-booking-backend/
 ├── src/                          # Source code
 │   ├── Controllers/              # API controllers (HTTP layer)
-│   │   ├── BookingController.cs  # Booking endpoints
-│   │   ├── BuildingController.cs # Building endpoints
-│   │   ├── RoomController.cs     # Room endpoints
-│   │   └── HealthController.cs   # Health check endpoint
 │   ├── Services/                 # Business logic layer
-│   │   ├── Interfaces/           # Service contracts
-│   │   ├── BookingService.cs     # Booking business logic
-│   │   ├── BuildingService.cs    # Building business logic
-│   │   └── RoomService.cs        # Room business logic
 │   ├── Domain/                   # Domain entities
-│   │   ├── Booking.cs            # Booking entity
-│   │   ├── Building.cs           # Building entity
-│   │   ├── Room.cs               # Room entity
-│   │   └── BookingStatus.cs      # Status enum
 │   ├── DTOs/                     # Data transfer objects
-│   │   ├── Booking/              # Booking request/response DTOs
-│   │   ├── Building/             # Building request/response DTOs
-│   │   ├── Room/                 # Room request/response DTOs
-│   │   └── Common/               # Shared DTOs (StandardApiResponse, PagedResult)
 │   ├── Data/                     # Database context
-│   │   └── ApplicationDbContext.cs
 │   ├── Mappings/                 # Entity configurations
-│   │   ├── BookingMapping.cs     # Booking entity configuration
-│   │   ├── BuildingMapping.cs    # Building entity configuration
-│   │   └── RoomMapping.cs        # Room entity configuration
 │   ├── Middleware/               # Custom middleware
-│   │   └── GlobalExceptionMiddleware.cs
 │   ├── Migrations/               # EF Core migrations
 │   ├── Program.cs                # Application entry point
 │   └── RoomBooking.Api.csproj    # Project file
@@ -501,9 +465,7 @@ dotnet ef migrations remove --project src/RoomBooking.Api.csproj
 │   └── 06_JSON-Spec.md           # JSON contract specification
 ├── .env.example                  # Environment template
 ├── .env                          # Local environment (gitignored)
-├── .gitignore                    # Git ignore rules
-├── RoomBooking.sln               # Solution file
-└── README.md                     # This file
+├── README.md                     # This file
 ```
 
 ---
@@ -516,10 +478,7 @@ dotnet ef migrations remove --project src/RoomBooking.Api.csproj
 |---------|-------------|
 | `dotnet build` | Build the solution |
 | `dotnet run --project src/RoomBooking.Api.csproj` | Run from repository root |
-| `cd src && dotnet run` | Run from src directory |
 | `dotnet watch run --project src/RoomBooking.Api.csproj` | Run with hot reload |
-| `dotnet test` | Run unit tests (when available) |
-| `dotnet ef migrations add <Name> --project src/RoomBooking.Api.csproj` | Create new migration |
 | `dotnet ef database update --project src/RoomBooking.Api.csproj` | Apply migrations |
 
 ### Code Conventions
@@ -532,251 +491,13 @@ dotnet ef migrations remove --project src/RoomBooking.Api.csproj
   - JSON: snake_case for all properties
   - Database: snake_case for tables and columns
 
-### Development Workflow
-
-1. **Create feature branch**: `git checkout -b feature/your-feature-name`
-2. **Make changes**: Implement your feature
-3. **Test locally**: Verify functionality
-4. **Commit**: Use conventional commit messages
-5. **Push**: `git push origin feature/your-feature-name`
-6. **Create PR**: Submit for review
-
-### Conventional Commit Format
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-[optional footer]
-```
-
-**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-
-**Examples**:
-```
-feat(booking): add conflict detection for overlapping bookings
-fix(room): resolve capacity validation issue
-docs(readme): update installation instructions
-```
-
----
-
-## Troubleshooting
-
-### Database Connection Issues
-
-**Problem**: `DB_CONNECTION_STRING environment variable is not set`
-
-**Solution**:
-- Verify `.env` file exists in repository root
-- Check `.env` file contains `DB_CONNECTION_STRING`
-- Ensure no extra spaces or quotes around the value
-- Try setting environment variable manually (see [Environment Configuration](#-environment-configuration))
-
----
-
-**Problem**: `Connection refused` or `could not connect to server`
-
-**Solution**:
-- Verify PostgreSQL service is running:
-  ```bash
-  # Windows
-  Get-Service postgresql*
-  
-  # Linux/macOS
-  sudo systemctl status postgresql
-  ```
-- Check connection string host, port, and credentials
-- Ensure database exists: `psql -U postgres -l`
-
----
-
-### Migration Issues
-
-**Problem**: `No migrations configuration type was found`
-
-**Solution**:
-- Ensure you're running from repository root with `--project` flag
-- Or navigate to `src/` directory first
-
----
-
-**Problem**: `The database does not exist`
-
-**Solution**:
-```bash
-# Create database manually
-psql -U postgres -c "CREATE DATABASE roombooking;"
-
-# Then apply migrations
-dotnet ef database update --project src/RoomBooking.Api.csproj
-```
-
----
-
-### Port Conflicts
-
-**Problem**: `Address already in use` or port 5001 is busy
-
-**Solution**:
-- Change port in `src/Properties/launchSettings.json`
-- Or stop the conflicting process:
-  ```bash
-  # Windows
-  netstat -ano | findstr :5001
-  taskkill /PID <PID> /F
-  
-  # Linux/macOS
-  lsof -ti:5001 | xargs kill -9
-  ```
-
----
-
-### Build Errors
-
-**Problem**: `The type or namespace name could not be found`
-
-**Solution**:
-```bash
-# Clean and restore
-dotnet clean
-dotnet restore
-dotnet build
-```
-
----
-
-### Scalar UI Not Loading
-
-**Problem**: Scalar documentation page not accessible
-
-**Solution**:
-- Ensure running in **Development** mode (Scalar only enabled in development)
-- Check `ASPNETCORE_ENVIRONMENT` is set to `Development`
-- Verify URL: `https://localhost:5001/scalar/v1`
-
----
-
-## Contributing
-
-We welcome contributions from the community! Whether it's bug fixes, new features, or documentation improvements, your help is appreciated.
-
-### How to Contribute
-
-1. **Fork the repository**
-   ```bash
-   # Click the "Fork" button on GitHub
-   ```
-
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/your-bug-fix
-   ```
-
-3. **Make your changes**
-   - Follow the [code conventions](#code-conventions)
-   - Write clear, descriptive commit messages
-   - Add tests if applicable
-
-4. **Commit your changes**
-   ```bash
-   git commit -m "feat(scope): add new feature"
-   # Use conventional commit format
-   ```
-
-5. **Push to your fork**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-6. **Create a Pull Request**
-   - Provide a clear description of your changes
-   - Reference any related issues
-   - Ensure all checks pass
-
-### Commit Message Convention
-
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-[optional footer]
-```
-
-**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-
-**Examples**:
-```
-feat(booking): add conflict detection for overlapping bookings
-fix(room): resolve capacity validation issue
-docs(readme): update installation instructions
-refactor(service): simplify booking validation logic
-```
-
-### Code of Conduct
-
-- Be respectful and inclusive
-- Provide constructive feedback
-- Focus on the code, not the person
-- Help others learn and grow
-
 ---
 
 ## License
 
 This project is licensed under the **MIT License**.
 
-```
-MIT License
-
-Copyright (c) 2026 Room Booking System Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
 See [LICENSE](LICENSE) file for full details.
-
-> **Note**: This project is developed as part of PBL (Project-Based Learning) coursework.
-
----
-
-## Contact
-
-### Project Information
-- **Repository**: [github.com/yogaprastyoo/2026-room-booking-backend](https://github.com/yogaprastyoo/2026-room-booking-backend)
-- **Issues**: [Report a bug or request a feature](https://github.com/yogaprastyoo/2026-room-booking-backend/issues)
-- **Discussions**: [Join the conversation](https://github.com/yogaprastyoo/2026-room-booking-backend/discussions)
-
-### Maintainer
-- **GitHub**: [@yogaprastyoo](https://github.com/yogaprastyoo)
-
-### Support
-If you encounter any issues or have questions:
-1. Check the [Troubleshooting](#-troubleshooting) section
-2. Search [existing issues](https://github.com/yogaprastyoo/2026-room-booking-backend/issues)
-3. Create a [new issue](https://github.com/yogaprastyoo/2026-room-booking-backend/issues/new) with detailed information
-
----
 
 ---
 
