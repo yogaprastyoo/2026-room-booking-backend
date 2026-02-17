@@ -7,7 +7,7 @@ using RoomBooking.Api.Services.Interfaces;
 namespace RoomBooking.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/bookings")]
+[Route("api/bookings")]
 public class BookingController : ControllerBase
 {
     private readonly IBookingService _bookingService;
@@ -44,12 +44,21 @@ public class BookingController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<IActionResult> GetAll([FromQuery] BookingFilterRequest filter)
     {
-        var result = await _bookingService.GetAllAsync(page, pageSize);
-        return Ok(
-            StandardApiResponse<PagedResult<BookingResponse>>.SuccessResponse(result, "Bookings retrieved successfully.")
-        );
+        try
+        {
+            var result = await _bookingService.GetAllAsync(filter);
+            return Ok(
+                StandardApiResponse<PagedResult<BookingResponse>>.SuccessResponse(result, "Bookings retrieved successfully.")
+            );
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(
+                StandardApiResponse<object>.ErrorResponse(ex.Message)
+            );
+        }
     }
 
     [HttpGet("{id}")]
